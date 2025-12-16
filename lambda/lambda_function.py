@@ -9,9 +9,12 @@ import logging
 import json
 import re
 
-# Set your OpenAI API key
+# Source from https://github.com/k4l1sh/alexa-gpt
+# Relevant text entries translated to german
+# Testing with model gpt 5 was failed! ... to be verified
 
-api_key = "YOUR_API_KEY"
+# Set your OpenAI API key
+api_key = "<secret"
 
 model = "gpt-4o-mini"
 
@@ -27,7 +30,7 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Chat G.P.T. mode activated"
+        speak_output = "Der schlaue Chat ist nun aktiviert."
 
         session_attr = handler_input.attributes_manager.session_attributes
         session_attr["chat_history"] = []
@@ -80,19 +83,19 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         if followup_questions and len(followup_questions) > 0:
             # Add a short pause before the suggestions
             response += " <break time=\"0.5s\"/> "
-            response += "You could ask: "
+            response += "Du könntest fragen: "
             # Join with 'or' for the last question
             if len(followup_questions) > 1:
                 response += ", ".join([f"'{q}'" for q in followup_questions[:-1]])
-                response += f", or '{followup_questions[-1]}'"
+                response += f", oder '{followup_questions[-1]}'"
             else:
                 response += f"'{followup_questions[0]}'"
-            response += ". <break time=\"0.5s\"/> What would you like to know?"
+            response += ". <break time=\"0.5s\"/> Was möchtest Du wissen?"
         
         # Prepare response with reprompt that includes the follow-up questions
-        reprompt_text = "You can ask me another question or say stop to end the conversation."
+        reprompt_text = "Du kannst mir eine weitere Frage stellen oder 'stop' sagen, um das Gespräch zu beenden."
         if 'followup_questions' in session_attr and session_attr['followup_questions']:
-            reprompt_text = "You can ask me another question, say 'next' to hear more suggestions, or say stop to end the conversation."
+            reprompt_text = "Du kannst mir eine weitere Frage stellen, 'nächste' sagen, um weitere Vorschläge zu erhalten, oder 'stop' sagen, um das Gespräch zu beenden."
         
         return (
             handler_input.response_builder
@@ -111,7 +114,7 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
         # type: (HandlerInput, Exception) -> Response
         logger.error(exception, exc_info=True)
 
-        speak_output = "Sorry, I had trouble doing what you asked. Please try again."
+        speak_output = "Entschuldigung, ich habe Probleme, Deine Anfrage umzusetzen. Bitte versuche es erneut."
 
         return (
             handler_input.response_builder
@@ -129,7 +132,7 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Leaving Chat G.P.T. mode"
+        speak_output = "Verlasse den schlauen Chat"
 
         return (
             handler_input.response_builder
@@ -141,12 +144,12 @@ def process_followup_question(question, last_context):
     """Processes a question to determine if it's a follow-up and enhances it with context if needed"""
     # Common follow-up indicators
     followup_patterns = [
-        r'^(what|how|why|when|where|who|which)\s+(about|is|are|was|were|do|does|did|can|could|would|should|will)\s',
-        r'^(and|but|so|then|also)\s',
-        r'^(can|could|would|should|will)\s+(you|it|they|we)\s',
-        r'^(is|are|was|were|do|does|did)\s+(it|that|this|they|those|these)\s',
-        r'^(tell me more|elaborate|explain further)\s*',
-        r'^(why|how)\?*$'
+        r'^(was|wie|warum|wann|wo|wer|wessen)\s+(über|ist|sind|war|macht|konnte|kann|könnte|würde|sollte|wird)\s',
+        r'^(und|aber|dann|auch)\s',
+        r'^(kannst|könntest|könnt|würdest|würdet|sollst|sollt|wirst|wird|werden)\s+(du|es|sie|wir)\s',
+        r'^(ist|sind|was|wo|mache|tut|tat)\s+(es|das|dies|sie|diese|dieser)\s',
+        r'^(erzähle mir mehr|denken|erkläre genauer)\s*',
+        r'^(warum|wie)\?*$'
     ]
     
     is_followup = False
@@ -178,10 +181,10 @@ def generate_followup_questions(conversation_context, query, response, count=2):
         
         # Prepare a focused prompt for brief follow-ups
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that suggests short follow-up questions."},
-            {"role": "user", "content": """Based on the conversation, suggest 2 very short follow-up questions (max 4 words each). 
-            Make them direct and simple. Return ONLY the questions separated by '|'.
-            Example: What's the capital?|How big is it?"""}
+            {"role": "system", "content": "Du bist ein hilfreicher Assistent, der kurze Folgefragen vorschlägt."},
+            {"role": "user", "content": """Schlagen Sie basierend auf dem Gespräch zwei sehr kurze Anschlussfragen vor (maximal vier Wörter pro Frage). 
+            Formulieren Sie diese direkt und einfach. Gebe NUR die durch „|“ getrennten Fragen zurück.
+            Beispiel: Wie heißt die Hauptstadt? | Wie groß ist sie?"""}
         ]
         
         # Add conversation context
@@ -192,7 +195,7 @@ def generate_followup_questions(conversation_context, query, response, count=2):
         
         messages.append({"role": "user", "content": f"Current Q: {query}"})
         messages.append({"role": "assistant", "content": response})
-        messages.append({"role": "user", "content": "Follow-up questions (separated by |):"})
+        messages.append({"role": "user", "content": "Anschlussfragen (getrennt durch |):"})
         
         data = {
             "model": "gpt-3.5-turbo",  # Using a faster model for this
@@ -211,17 +214,17 @@ def generate_followup_questions(conversation_context, query, response, count=2):
             
             # If we don't have enough questions, provide defaults
             if len(questions) < 2:
-                questions = ["Tell me more", "Give me an example"]
+                questions = ["Erzähle mir mehr", "Gib mir eine Beispiel"]
                 
             logger.info(f"Generated follow-up questions: {questions}")
             return questions
             
         logger.error(f"API Error: {response.text}")
-        return ["Tell me more", "Give me an example"]
+        return ["Erzähle mir mehr", "Gebe mir ein Beispiel"]
         
     except Exception as e:
         logger.error(f"Error in generate_followup_questions: {str(e)}")
-        return ["Tell me more", "Give me an example"]
+        return ["Erzähle mir mehr", "Gebe mir ein Beispiel"]
 
 def generate_gpt_response(chat_history, new_question, is_followup=False):
     """Generates a GPT response to a question with enhanced context handling"""
@@ -232,9 +235,9 @@ def generate_gpt_response(chat_history, new_question, is_followup=False):
     url = "https://api.openai.com/v1/chat/completions"
     
     # Create a more informative system message based on whether this is a follow-up
-    system_message = "You are a helpful assistant. Answer in 50 words or less."
+    system_message = "Du bsit ein hilfreicher Assistent. Bitte antworte in maximal 50 Wörtern."
     if is_followup:
-        system_message += " This is a follow-up question to the previous conversation. Maintain context without repeating information already provided."
+        system_message += " Dies ist eine Anschlussfrage zum vorherigen Gespräch. Bitte stelle den Kontext sicher, ohne bereits gegebene Informationen zu wiederholen."
     
     messages = [{"role": "system", "content": system_message}]
     
@@ -292,7 +295,7 @@ class ClearContextIntentHandler(AbstractRequestHandler):
         session_attr["chat_history"] = []
         session_attr["last_context"] = None
         
-        speak_output = "I've cleared our conversation history. What would you like to talk about?"
+        speak_output = "Ich habe unseren Chatverlauf gelöscht. Worüber möchten Sie sprechen?"
         
         return (
             handler_input.response_builder
