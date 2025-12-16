@@ -14,7 +14,7 @@ import re
 # Testing with model gpt 5 was failed! ... to be verified
 
 # Set your OpenAI API key
-api_key = "<secret"
+api_key = "<secret>"
 
 model = "gpt-4o-mini"
 
